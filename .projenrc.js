@@ -1,7 +1,7 @@
 const { clickupTs } = require('@time-loop/clickup-projen');
 const project = new clickupTs.ClickUpTypeScriptProject({
   defaultReleaseBranch: 'main',
-  devDeps: ['@time-loop/clickup-projen', 'ts-node'],
+  devDeps: ['@time-loop/clickup-projen', 'ts-node', 'aws-sdk-client-mock@^0.6.2'],
   name: 'deploy-beanstalk',
 
   /* Runtime dependencies of this module. */

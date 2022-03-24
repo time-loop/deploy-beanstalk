@@ -24,6 +24,11 @@
       "type": "build"
     },
     {
+      "name": "aws-sdk-client-mock",
+      "version": "^0.6.2",
+      "type": "build"
+    },
+    {
       "name": "esbuild",
       "type": "build"
     },
