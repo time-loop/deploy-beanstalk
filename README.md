@@ -8,7 +8,7 @@ Historically we have used [Travis CI deployment providers](https://docs.travis-c
 
 - **Decoupling from Travis**
   - We want the possibility of switching over to any CI tool (GitHub actions, GitLab CI, etc.), and in order to do that, we need portable scripts that can be run Anywhere™.
-  - CI scripts can be written in any language such that engineers can easily read and improve upon the CI scripts. I recommend TypeScript.
+  - CI scripts can be written in any language such that engineers can easily read and improve upon the CI scripts. The DevOps team recommends TypeScript.
   - Consequently, we can easily introduce tests to our CI scripts.
 - **Parallel deployments**
   - With [Travis CI Beanstalk provider](https://docs.travis-ci.com/user/deployment-v2/providers/elasticbeanstalk/) we could only issue serial deployments to a single beanstalk environment at a time. With custom scripts, we can utilize language functionality (like TypeScript async functions, Golang goroutines, etc.) to allow for parallel deployments to multiple beanstalks at once...in whatever batched fashion we so desire.
