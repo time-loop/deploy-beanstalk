@@ -72,23 +72,19 @@ describe('Deployment to beanstalks in different apps', () => {
     ebMock.on(DescribeApplicationVersionsCommand).resolves({
       ApplicationVersions: [],
     });
-  });
-
-  test('succeeds when AWS client does', async () => {
     ebMock.on(DescribeEnvironmentHealthCommand).resolves({
       HealthStatus: 'Ok',
       Status: 'Ready',
     });
+  });
+
+  test('succeeds when AWS client does', async () => {
     expect(await deployToGroup(TEST_BEANSTALK_GROUP, FORCE_DEPLOYMENT)).not.toThrowError;
   });
 
   test('throws error when version already exists', async () => {
     ebMock.on(DescribeApplicationVersionsCommand).resolves({
       ApplicationVersions: [{}],
-    });
-    ebMock.on(DescribeEnvironmentHealthCommand).resolves({
-      HealthStatus: 'Ok',
-      Status: 'Ready',
     });
 
     expect.assertions(3);
@@ -104,10 +100,6 @@ describe('Deployment to beanstalks in different apps', () => {
   });
 
   test('throws one error when one environment fails deployment', async () => {
-    ebMock.on(DescribeEnvironmentHealthCommand).resolves({
-      HealthStatus: 'Ok',
-      Status: 'Ready',
-    });
     ebMock
       .on(UpdateEnvironmentCommand, {
         ApplicationName: TEST_BEANSTALK_GROUP.environments[0].app,
