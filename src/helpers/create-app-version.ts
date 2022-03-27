@@ -4,6 +4,7 @@ import {
   DescribeApplicationVersionsCommand,
   ElasticBeanstalkClient,
 } from '@aws-sdk/client-elastic-beanstalk';
+import { DBCreateApplicationVersionError } from './Errors';
 import { IAppVersionProps } from './Interfaces';
 
 async function checkApplicationVersionExists(
@@ -75,6 +76,6 @@ export async function create(
       await createApplicationVersion(client, version, appName, dryRun);
     }
   } catch (e) {
-    throw new Error(`Beanstalk app version ${version.label} failed creation. ${e}`);
+    throw new DBCreateApplicationVersionError(appName, version.label, e as Error);
   }
 }

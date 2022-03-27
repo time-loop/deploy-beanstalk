@@ -5,6 +5,7 @@ import {
   ElasticBeanstalkClient,
   UpdateEnvironmentCommand,
 } from '@aws-sdk/client-elastic-beanstalk';
+import { DBDeployApplicationVersionError } from './Errors';
 import { IAppVersionProps, IBeanstalkEnvironment } from './Interfaces';
 
 const AWS_EB_HEALTH_CHECK_ATTEMPTS = 20;
@@ -102,7 +103,9 @@ async function deployApplicationVersion(
     console.log(`Deployment of app version '${version.label}' triggered for '${env.name}'.`);
   } else {
     throw new Error(
-      `Triggered deployment of app version '${version.label}' failed for '${env.name}'. Response metadata: ${resp.$metadata}`,
+      `Triggered deployment of app version '${version.label}' failed for '${
+        env.name
+      }'. Response metadata: ${JSON.stringify(resp.$metadata, undefined, 2)}`,
     );
   }
 }
@@ -127,6 +130,6 @@ export async function deploy(
     await deployApplicationVersion(client, env, version, dryRun); // Initiate deployment
     await waitForBeanstalkHealthiness(client, env, dryRun); // Verify env reaches healthy state after deployment
   } catch (e) {
-    throw new Error(`Beanstalk ${env.name} failed deployment. ${e}`);
+    throw new DBDeployApplicationVersionError(env.name, version.label, e as Error);
   }
 }

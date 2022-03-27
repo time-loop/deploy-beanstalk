@@ -3,6 +3,7 @@ import { ElasticBeanstalkClient } from '@aws-sdk/client-elastic-beanstalk';
 import chalk from 'chalk';
 import { create } from './helpers/create-app-version';
 import { deploy } from './helpers/deploy-app-version-to-env';
+import { DBAsyncError } from './helpers/Errors';
 import { IBeanstalkGroup } from './helpers/Interfaces';
 
 const AWS_CLIENT_REQUEST_MAX_ATTEMPTS = 3;
@@ -12,14 +13,13 @@ const AWS_CLIENT_REQUEST_MAX_ATTEMPTS = 3;
  * @param results - The async promises to check for fullfillment
  */
 function verifyPromisesSettled(results: PromiseSettledResult<void>[]) {
-  let success = true;
+  const errs: Error[] = [];
   results.forEach((result) => {
     if (result.status === 'rejected') {
-      console.error(chalk.red(`${result.reason}`));
-      success = false;
+      errs.push(result.reason);
     }
   });
-  if (!success) throw new Error('At least one async process failed as indicated above.');
+  if (errs.length > 0) throw new DBAsyncError('At least one async process failed as indicated above.', errs);
 }
 
 /**
@@ -80,10 +80,12 @@ export async function deployToGroup(group: IBeanstalkGroup, force: boolean = fal
     await createAppVersionsForGroup(client, group, force);
     await deployAppVersionsToGroup(client, group, force);
   } catch (e) {
-    // TODO: This should throw an error since this is a library.
-    const colorizedErrMsg =
-      chalk.red('Deploy to beanstalk group ') + chalk.blue(group.name) + chalk.red(` failed: ${e}`);
-    console.error(colorizedErrMsg);
-    process.exit(1);
+    if (e instanceof DBAsyncError) {
+      e.errors.forEach((err) => console.error(chalk.red(err)));
+    } else {
+      console.error(chalk.red(e));
+    }
+    console.error(chalk.red('Deploy to beanstalk group ') + chalk.blue(group.name) + chalk.red(' failed.'));
+    throw e;
   }
 }
