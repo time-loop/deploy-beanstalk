@@ -19,6 +19,14 @@ const ebMock = mockClient(ElasticBeanstalkClient);
 const FORCE_DEPLOYMENT = true;
 let TEST_BEANSTALK_GROUP: IBeanstalkGroup;
 
+// Silence all log output for tests
+global.console = {
+  ...global.console,
+  log: jest.fn(),
+  debug: jest.fn(),
+  error: jest.fn(),
+};
+
 // Must reset client prior to each test
 // https://aws.amazon.com/blogs/developer/mocking-modular-aws-sdk-for-javascript-v3-in-unit-tests/
 beforeEach(() => ebMock.reset());
@@ -47,14 +55,6 @@ describe('Deployment to beanstalks in different apps', () => {
     },
     name: 'TestBeanstalkGroup',
     region: 'us-west-2',
-  };
-
-  // Silence all log output for tests
-  global.console = {
-    ...global.console,
-    log: jest.fn(),
-    debug: jest.fn(),
-    error: jest.fn(),
   };
 
   // Defines mock functions for AWS EB Client
