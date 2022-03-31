@@ -6,7 +6,7 @@ import { deploy } from './helpers/deploy-app-version-to-env';
 import { DBAsyncError } from './helpers/Errors';
 import { IBeanstalkGroup } from './helpers/Interfaces';
 
-const AWS_CLIENT_REQUEST_MAX_ATTEMPTS = 3;
+const AWS_CLIENT_REQUEST_MAX_ATTEMPTS_DEFAULT = 5;
 
 /**
  * Helper function to verify that async processes succeeded.
@@ -26,9 +26,6 @@ function verifyPromisesSettled(results: PromiseSettledResult<void>[]) {
  * Each Beanstalk Environment listed in group belongs to a Beanstalk
  * Application. For each of those unique Applications, we must create an App
  * Version to use for deployments.
- *
- * @param group
- * @param force
  */
 async function createAppVersionsForGroup(client: ElasticBeanstalkClient, group: IBeanstalkGroup, force: boolean) {
   const appsWithCreatedVersions: string[] = [];
@@ -36,7 +33,14 @@ async function createAppVersionsForGroup(client: ElasticBeanstalkClient, group: 
   console.log(`Creating application versions for beanstalk group ${group.name}`);
   group.environments.forEach((env) => {
     if (!appsWithCreatedVersions.includes(env.app)) {
-      appVersionPromises.push(create(client, group.versionProps, env.app, !force));
+      appVersionPromises.push(
+        create({
+          client,
+          version: group.versionProps,
+          appName: env.app,
+          dryRun: !force,
+        }),
+      );
       appsWithCreatedVersions.push(env.app);
     }
   });
@@ -48,14 +52,18 @@ async function createAppVersionsForGroup(client: ElasticBeanstalkClient, group: 
 /**
  * For each Beanstalk Environment in group, deploys the respective Application
  * Version.
- *
- * @param group
- * @param force
  */
 async function deployAppVersionsToGroup(client: ElasticBeanstalkClient, group: IBeanstalkGroup, force: boolean) {
   console.log(`Asynchronously kicking off deployment to the ${group.name} group of beanstalks.`);
   const deploymentResults = await Promise.allSettled(
-    group.environments.map((env) => deploy(client, env, group.versionProps, !force)),
+    group.environments.map((env) =>
+      deploy({
+        client,
+        dryRun: !force,
+        env,
+        version: group.versionProps,
+      }),
+    ),
   );
   verifyPromisesSettled(deploymentResults);
   console.log(chalk.green('Successfully deployed to beanstalk group ') + chalk.blue(group.name));
@@ -74,7 +82,7 @@ export async function deployToGroup(group: IBeanstalkGroup, force: boolean = fal
   try {
     console.log(chalk.green('Beginning deploy process for beanstalk group ') + chalk.blue(group.name));
     const client = new ElasticBeanstalkClient({
-      maxAttempts: AWS_CLIENT_REQUEST_MAX_ATTEMPTS,
+      maxAttempts: AWS_CLIENT_REQUEST_MAX_ATTEMPTS_DEFAULT,
       region: group.region,
     });
     await createAppVersionsForGroup(client, group, force);
