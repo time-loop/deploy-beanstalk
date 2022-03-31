@@ -12,20 +12,13 @@ import {
   DBDeployApplicationVersionError,
   deployToGroup,
   IBeanstalkGroup,
+  IDeployToGroupProps,
 } from '../src/index';
 
 const ebMock = mockClient(ElasticBeanstalkClient);
 
 const FORCE_DEPLOYMENT = true;
 let TEST_BEANSTALK_GROUP: IBeanstalkGroup;
-
-// Silence all log output for tests
-global.console = {
-  ...global.console,
-  log: jest.fn(),
-  debug: jest.fn(),
-  error: jest.fn(),
-};
 
 // Must reset client prior to each test
 // https://aws.amazon.com/blogs/developer/mocking-modular-aws-sdk-for-javascript-v3-in-unit-tests/
@@ -57,6 +50,12 @@ describe('Deployment to beanstalks in different apps', () => {
     region: 'us-west-2',
   };
 
+  const commonDeployProps: IDeployToGroupProps = {
+    group: TEST_BEANSTALK_GROUP,
+    force: FORCE_DEPLOYMENT,
+    logLevel: 'SILENT',
+  };
+
   // Defines mock functions for AWS EB Client
   beforeEach(() => {
     ebMock.on(CreateApplicationVersionCommand).resolves({
@@ -79,7 +78,7 @@ describe('Deployment to beanstalks in different apps', () => {
   });
 
   test('succeeds when AWS client does', async () => {
-    expect(await deployToGroup(TEST_BEANSTALK_GROUP, FORCE_DEPLOYMENT)).not.toThrowError;
+    expect(await deployToGroup(commonDeployProps)).not.toThrowError;
   });
 
   test('throws error when version already exists', async () => {
@@ -90,7 +89,7 @@ describe('Deployment to beanstalks in different apps', () => {
     expect.assertions(3);
     const expectedErrCount = 2;
     try {
-      await deployToGroup(TEST_BEANSTALK_GROUP, FORCE_DEPLOYMENT);
+      await deployToGroup(commonDeployProps);
     } catch (e) {
       expect(e).toBeInstanceOf(DBAsyncError);
       const errs = (e as DBAsyncError).errors;
@@ -115,7 +114,7 @@ describe('Deployment to beanstalks in different apps', () => {
     expect.assertions(3);
     const expectedErrCount = 1;
     try {
-      await deployToGroup(TEST_BEANSTALK_GROUP, FORCE_DEPLOYMENT);
+      await deployToGroup(commonDeployProps);
     } catch (e) {
       expect(e).toBeInstanceOf(DBAsyncError);
       const errs = (e as DBAsyncError).errors;

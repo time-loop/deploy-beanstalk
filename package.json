@@ -57,6 +57,7 @@
     "@aws-sdk/client-elastic-beanstalk": "^3.54.1",
     "@time-loop/clickup-projen": "^0.0.25",
     "chalk": "^4.1.2",
+    "loglevel": "^1.8.0",
     "yargs-parser": "^21.0.1"
   },
   "engines": {

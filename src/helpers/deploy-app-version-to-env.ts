@@ -5,6 +5,7 @@ import {
   ElasticBeanstalkClient,
   UpdateEnvironmentCommand,
 } from '@aws-sdk/client-elastic-beanstalk';
+import log from 'loglevel';
 import { DBDeployApplicationVersionError } from './Errors';
 import { IAppVersionProps, IBeanstalkEnvironment } from './Interfaces';
 
@@ -36,11 +37,11 @@ function sleep(ms: number) {
  */
 async function waitForBeanstalkHealthiness(props: IDeployProps): Promise<void> {
   if (props.dryRun) {
-    console.log(`DRY RUN: Would have waited for beanstalk environment ${props.env.name} to become healthy.`);
+    log.info(`DRY RUN: Would have waited for beanstalk environment ${props.env.name} to become healthy.`);
     return;
   }
   let getHealthResp: DescribeEnvironmentHealthCommandOutput;
-  console.log(`Waiting for beanstalk environment '${props.env.name}' to become healthy...`);
+  log.info(`Waiting for beanstalk environment '${props.env.name}' to become healthy...`);
   for (let attempt = 1; attempt <= AWS_EB_HEALTH_CHECK_ATTEMPTS; attempt++) {
     getHealthResp = await props.client.send(
       new DescribeEnvironmentHealthCommand({
@@ -55,17 +56,17 @@ async function waitForBeanstalkHealthiness(props: IDeployProps): Promise<void> {
     }
     const isInHealthyState = !AWS_EB_HEALTH_CHECK_UNHEALTHY_STATES.includes(getHealthResp.HealthStatus);
     if (getHealthResp.Status === 'Updating') {
-      console.log(
+      log.info(
         `Beanstalk environment '${props.env.name}' current health is ${getHealthResp.HealthStatus}, in updating state...`,
       );
     } else if (getHealthResp.Status === 'Ready' && !isInHealthyState) {
-      console.log(`Beanstalk environment '${props.env.name}' ready, but getting healthy...`);
+      log.info(`Beanstalk environment '${props.env.name}' ready, but getting healthy...`);
     } else if (getHealthResp.Status === 'Ready' && isInHealthyState) {
-      console.log(`Beanstalk environment '${props.env.name}' is ready and healthy.`);
+      log.info(`Beanstalk environment '${props.env.name}' is ready and healthy.`);
       return;
     }
 
-    console.debug(getHealthResp);
+    log.debug(getHealthResp);
     if (attempt != AWS_EB_HEALTH_CHECK_ATTEMPTS) await sleep(AWS_EB_HEALTH_CHECK_TIME_BETWEEN_ATTEMPTS_MS);
   }
   throw new Error(`Beanstalk '${props.env.name}' did not reach a healthy state: ${JSON.stringify(getHealthResp!)}`);
@@ -77,13 +78,13 @@ async function waitForBeanstalkHealthiness(props: IDeployProps): Promise<void> {
  */
 async function deployApplicationVersion(props: IDeployProps): Promise<void> {
   if (props.dryRun) {
-    console.log(
+    log.info(
       `DRY RUN: Would have deployed app version ${props.version.label} to beanstalk environment ${props.env.name}`,
     );
     return;
   }
 
-  console.log(`Initiating deployment of version ${props.version.label} to environment ${props.env.name}...`);
+  log.info(`Initiating deployment of version ${props.version.label} to environment ${props.env.name}...`);
   const resp = await props.client.send(
     new UpdateEnvironmentCommand({
       ApplicationName: props.env.app,
@@ -95,7 +96,7 @@ async function deployApplicationVersion(props: IDeployProps): Promise<void> {
   // Verify deployment initiated successfully
   const statusCode = resp.$metadata.httpStatusCode;
   if (statusCode && statusCode >= 200 && statusCode < 300) {
-    console.log(`Deployment of app version '${props.version.label}' triggered for '${props.env.name}'.`);
+    log.info(`Deployment of app version '${props.version.label}' triggered for '${props.env.name}'.`);
   } else {
     throw new Error(
       `Triggered deployment of app version '${props.version.label}' failed for '${

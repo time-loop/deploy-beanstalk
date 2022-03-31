@@ -4,6 +4,7 @@ import {
   DescribeApplicationVersionsCommand,
   ElasticBeanstalkClient,
 } from '@aws-sdk/client-elastic-beanstalk';
+import log from 'loglevel';
 import { DBCreateApplicationVersionError } from './Errors';
 import { IAppVersionProps } from './Interfaces';
 
@@ -25,7 +26,7 @@ async function checkApplicationVersionExists(props: ICreateProps): Promise<boole
 
 async function createApplicationVersion(props: ICreateProps): Promise<void> {
   if (props.dryRun) {
-    console.log(`DRY RUN: Would have created application version ${props.version.label} for app ${props.appName}`);
+    log.info(`DRY RUN: Would have created application version ${props.version.label} for app ${props.appName}`);
     return;
   }
 
@@ -37,13 +38,13 @@ async function createApplicationVersion(props: ICreateProps): Promise<void> {
     VersionLabel: props.version.label,
   });
 
-  console.log(`Creating version ${props.version.label} for beanstalk application ${props.appName}`);
+  log.info(`Creating version ${props.version.label} for beanstalk application ${props.appName}`);
   const resp = await props.client.send(createVersionCmd);
 
   // Verify OK response
   const statusCode = resp.$metadata.httpStatusCode;
   if (statusCode && statusCode >= 200 && statusCode < 300) {
-    console.log(`New application version labeled '${props.version.label}' created for app ${props.appName}.`);
+    log.info(`New application version labeled '${props.version.label}' created for app ${props.appName}.`);
   } else {
     throw new Error(`Create application version failed for app ${props.appName}. Response metadata: ${resp.$metadata}`);
   }
@@ -61,7 +62,7 @@ export async function create(props: ICreateProps): Promise<void> {
       if (props.version.errorIfExists ?? false) {
         throw new Error(`Failed to create new application version ${props.version.label}, it already exists.`);
       }
-      console.log(
+      log.info(
         `Not creating new application version ${props.version.label} for app ${props.appName} since it already exists.`,
       );
     } else {

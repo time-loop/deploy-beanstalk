@@ -119,6 +119,11 @@
       "type": "runtime"
     },
     {
+      "name": "loglevel",
+      "version": "^1.8.0",
+      "type": "runtime"
+    },
+    {
       "name": "yargs-parser",
       "version": "^21.0.1",
       "type": "runtime"

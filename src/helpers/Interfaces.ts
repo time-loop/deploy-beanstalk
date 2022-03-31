@@ -1,4 +1,5 @@
 import { S3Location } from '@aws-sdk/client-elastic-beanstalk';
+import log from 'loglevel';
 
 /**
  * Properties consumed to deploy an Application Version to an existing
@@ -51,4 +52,22 @@ export interface IAppVersionProps {
    * exists, do we error or continue?
    */
   readonly errorIfExists: boolean;
+}
+
+/**
+ * Everything required to deploy to a group of Beanstalk Environments.
+ */
+export interface IDeployToGroupProps {
+  /**
+   * The list of Beanstalk Environment to deploy to.
+   */
+  readonly group: IBeanstalkGroup;
+  /**
+   * If false, will perform a no-op describing what would occur. Defaults to false.
+   */
+  readonly force?: boolean;
+  /**
+   * Every level below the specified log level is silenced. Defaults to INFO.
+   */
+  readonly logLevel?: log.LogLevelDesc;
 }

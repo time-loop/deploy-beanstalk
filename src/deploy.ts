@@ -1,10 +1,11 @@
 /* eslint-disable no-console */
 import { ElasticBeanstalkClient } from '@aws-sdk/client-elastic-beanstalk';
 import chalk from 'chalk';
+import log from 'loglevel';
 import { create } from './helpers/create-app-version';
 import { deploy } from './helpers/deploy-app-version-to-env';
 import { DBAsyncError } from './helpers/Errors';
-import { IBeanstalkGroup } from './helpers/Interfaces';
+import { IBeanstalkGroup, IDeployToGroupProps } from './helpers/Interfaces';
 
 const AWS_CLIENT_REQUEST_MAX_ATTEMPTS_DEFAULT = 10;
 
@@ -30,7 +31,7 @@ function verifyPromisesSettled(results: PromiseSettledResult<void>[]) {
 async function createAppVersionsForGroup(client: ElasticBeanstalkClient, group: IBeanstalkGroup, force: boolean) {
   const appsWithCreatedVersions: string[] = [];
   const appVersionPromises: Promise<void>[] = [];
-  console.log(`Creating application versions for beanstalk group ${group.name}`);
+  log.info(`Creating application versions for beanstalk group ${group.name}`);
   group.environments.forEach((env) => {
     if (!appsWithCreatedVersions.includes(env.app)) {
       appVersionPromises.push(
@@ -46,7 +47,7 @@ async function createAppVersionsForGroup(client: ElasticBeanstalkClient, group: 
   });
   const versionCreationResults = await Promise.allSettled(appVersionPromises);
   verifyPromisesSettled(versionCreationResults);
-  console.log(chalk.green('All needed application versions exist. Proceeding to deploy them...'));
+  log.info(chalk.green('All needed application versions exist. Proceeding to deploy them...'));
 }
 
 /**
@@ -54,7 +55,7 @@ async function createAppVersionsForGroup(client: ElasticBeanstalkClient, group: 
  * Version.
  */
 async function deployAppVersionsToGroup(client: ElasticBeanstalkClient, group: IBeanstalkGroup, force: boolean) {
-  console.log(`Asynchronously kicking off deployment to the ${group.name} group of beanstalks.`);
+  log.info(`Asynchronously kicking off deployment to the ${group.name} group of beanstalks.`);
   const deploymentResults = await Promise.allSettled(
     group.environments.map((env) =>
       deploy({
@@ -66,34 +67,32 @@ async function deployAppVersionsToGroup(client: ElasticBeanstalkClient, group: I
     ),
   );
   verifyPromisesSettled(deploymentResults);
-  console.log(chalk.green('Successfully deployed to beanstalk group ') + chalk.blue(group.name));
+  log.info(chalk.green('Successfully deployed to beanstalk group ') + chalk.blue(group.name));
 }
 
 /**
  * Iterates over a group of Beanstalk Environments, creates Application
  * Versions for their respective Beanstalk Applications, and then deploys
  * those versions to the Beanstalk Environments all asynchronously.
- *
- * @param group - The list of Beanstalk Environment to deploy to.
- * @param force - If false, will perform a no-op describing what would occur.
- *                Defaults to false.
  */
-export async function deployToGroup(group: IBeanstalkGroup, force: boolean = false) {
+export async function deployToGroup(props: IDeployToGroupProps) {
   try {
-    console.log(chalk.green('Beginning deploy process for beanstalk group ') + chalk.blue(group.name));
+    log.setLevel(props.logLevel ?? log.levels.INFO);
+    log.info(chalk.green('Beginning deploy process for beanstalk group ') + chalk.blue(props.group.name));
     const client = new ElasticBeanstalkClient({
       maxAttempts: AWS_CLIENT_REQUEST_MAX_ATTEMPTS_DEFAULT,
-      region: group.region,
+      region: props.group.region,
     });
-    await createAppVersionsForGroup(client, group, force);
-    await deployAppVersionsToGroup(client, group, force);
+    const force = props.force ?? false;
+    await createAppVersionsForGroup(client, props.group, force);
+    await deployAppVersionsToGroup(client, props.group, force);
   } catch (e) {
     if (e instanceof DBAsyncError) {
-      e.errors.forEach((err) => console.error(chalk.red(err)));
+      e.errors.forEach((err) => log.error(chalk.red(err)));
     } else {
-      console.error(chalk.red(e));
+      log.error(chalk.red(e));
     }
-    console.error(chalk.red('Deploy to beanstalk group ') + chalk.blue(group.name) + chalk.red(' failed.'));
+    log.error(chalk.red('Deploy to beanstalk group ') + chalk.blue(props.group.name) + chalk.red(' failed.'));
     throw e;
   }
 }
