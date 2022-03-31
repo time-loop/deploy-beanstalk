@@ -8,7 +8,7 @@ import {
 import { DBDeployApplicationVersionError } from './Errors';
 import { IAppVersionProps, IBeanstalkEnvironment } from './Interfaces';
 
-const AWS_EB_HEALTH_CHECK_ATTEMPTS = 30;
+const AWS_EB_HEALTH_CHECK_ATTEMPTS = 45;
 const AWS_EB_HEALTH_CHECK_ATTRS_TO_GET = ['Status', 'HealthStatus', 'InstancesHealth'];
 const AWS_EB_HEALTH_CHECK_TIME_BETWEEN_ATTEMPTS_MS = 60000;
 const AWS_EB_HEALTH_CHECK_UNHEALTHY_STATES = ['Severe', 'Degraded', 'Warning'];

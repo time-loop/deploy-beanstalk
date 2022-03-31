@@ -6,7 +6,7 @@ import { deploy } from './helpers/deploy-app-version-to-env';
 import { DBAsyncError } from './helpers/Errors';
 import { IBeanstalkGroup } from './helpers/Interfaces';
 
-const AWS_CLIENT_REQUEST_MAX_ATTEMPTS_DEFAULT = 5;
+const AWS_CLIENT_REQUEST_MAX_ATTEMPTS_DEFAULT = 10;
 
 /**
  * Helper function to verify that async processes succeeded.
