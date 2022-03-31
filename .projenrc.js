@@ -5,7 +5,7 @@ const project = new clickupTs.ClickUpTypeScriptProject({
   name: 'deploy-beanstalk',
 
   /* Runtime dependencies of this module. */
-  deps: ['@aws-sdk/client-elastic-beanstalk@^3.54.1', 'chalk@^4.1.2', 'yargs-parser@^21.0.1'],
+  deps: ['@aws-sdk/client-elastic-beanstalk@^3.54.1', 'chalk@^4.1.2', 'loglevel@^1.8.0', 'yargs-parser@^21.0.1'],
   tsconfig: {
     compilerOptions: {
       lib: ['es2020'],
