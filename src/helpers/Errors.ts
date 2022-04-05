@@ -33,3 +33,12 @@ export class DBDeployApplicationVersionError extends Error {
     Object.setPrototypeOf(this, DBDeployApplicationVersionError.prototype);
   }
 }
+
+export class DBHealthinessCheckError extends Error {
+  constructor(msg: string) {
+    super(msg);
+
+    // Set the prototype explicitly.
+    Object.setPrototypeOf(this, DBHealthinessCheckError.prototype);
+  }
+}

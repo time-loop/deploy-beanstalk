@@ -1,7 +1,7 @@
 import {
   CreateApplicationVersionCommand,
   DescribeApplicationVersionsCommand,
-  DescribeEnvironmentHealthCommand,
+  DescribeEnvironmentsCommand,
   ElasticBeanstalkClient,
   UpdateEnvironmentCommand,
 } from '@aws-sdk/client-elastic-beanstalk';
@@ -9,7 +9,7 @@ import { mockClient } from 'aws-sdk-client-mock';
 import {
   DBAsyncError,
   DBCreateApplicationVersionError,
-  DBDeployApplicationVersionError,
+  DBHealthinessCheckError,
   deployToGroup,
   IBeanstalkGroup,
   IDeployToGroupProps,
@@ -53,10 +53,18 @@ describe('Deployment to beanstalks in different apps', () => {
   const commonDeployProps: IDeployToGroupProps = {
     group: TEST_BEANSTALK_GROUP,
     force: FORCE_DEPLOYMENT,
-    logLevel: 'SILENT',
+    logLevel: 'INFO', // TODO: Before committing, make this SILENT
+    preDeployHealthCheckProps: {
+      attempts: 1,
+      timeBetweenAttemptsMs: 500,
+    },
+    postDeployHealthCheckProps: {
+      attempts: 1,
+      timeBetweenAttemptsMs: 500,
+    },
   };
 
-  // Defines mock functions for AWS EB Client
+  // Defines mock functions for AWS EB Client, mocking successful deployment
   beforeEach(() => {
     ebMock.on(CreateApplicationVersionCommand).resolves({
       $metadata: {
@@ -71,9 +79,32 @@ describe('Deployment to beanstalks in different apps', () => {
     ebMock.on(DescribeApplicationVersionsCommand).resolves({
       ApplicationVersions: [],
     });
-    ebMock.on(DescribeEnvironmentHealthCommand).resolves({
-      HealthStatus: 'Ok',
-      Status: 'Ready',
+    TEST_BEANSTALK_GROUP.environments.forEach((env) => {
+      ebMock
+        .on(DescribeEnvironmentsCommand, {
+          ApplicationName: env.app,
+          EnvironmentNames: [env.name],
+        })
+        .resolvesOnce({
+          Environments: [
+            {
+              EnvironmentName: env.name,
+              HealthStatus: 'Ok',
+              Status: 'Ready',
+              VersionLabel: 'OLD_VERSION',
+            },
+          ],
+        })
+        .resolves({
+          Environments: [
+            {
+              EnvironmentName: env.name,
+              HealthStatus: 'Ok',
+              Status: 'Ready',
+              VersionLabel: TEST_BEANSTALK_GROUP.versionProps.label,
+            },
+          ],
+        });
     });
   });
 
@@ -100,26 +131,26 @@ describe('Deployment to beanstalks in different apps', () => {
 
   test('throws one error when one environment fails deployment', async () => {
     ebMock
-      .on(UpdateEnvironmentCommand, {
-        ApplicationName: TEST_BEANSTALK_GROUP.environments[0].app,
-        EnvironmentName: TEST_BEANSTALK_GROUP.environments[0].name,
-        VersionLabel: TEST_BEANSTALK_GROUP.versionProps.label,
+      .on(DescribeEnvironmentsCommand, {
+        ApplicationName: TEST_BEANSTALK_GROUP.environments[1].app,
+        EnvironmentNames: [TEST_BEANSTALK_GROUP.environments[1].name],
       })
       .resolves({
-        $metadata: {
-          httpStatusCode: 400,
-        },
+        Environments: [
+          {
+            EnvironmentName: TEST_BEANSTALK_GROUP.environments[1].name,
+            HealthStatus: 'Ok',
+            Status: 'Ready',
+            VersionLabel: 'DID_NOT_RECEIEVE_NEW_VERSION',
+          },
+        ],
       });
 
-    expect.assertions(3);
-    const expectedErrCount = 1;
+    expect.assertions(1);
     try {
       await deployToGroup(commonDeployProps);
     } catch (e) {
-      expect(e).toBeInstanceOf(DBAsyncError);
-      const errs = (e as DBAsyncError).errors;
-      expect(errs).toHaveLength(expectedErrCount);
-      expect(errs.filter((err) => err instanceof DBDeployApplicationVersionError)).toHaveLength(expectedErrCount);
+      expect(e).toBeInstanceOf(DBHealthinessCheckError);
     }
   });
 });
