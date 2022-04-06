@@ -1,11 +1,11 @@
-export class DBAsyncError extends Error {
+export class DBError extends Error {
   private readonly _errors: Error[];
 
   constructor(msg: string, errors: Error[]) {
     super(msg);
 
     // Set the prototype explicitly.
-    Object.setPrototypeOf(this, DBAsyncError.prototype);
+    Object.setPrototypeOf(this, DBError.prototype);
     this._errors = errors;
   }
 
@@ -34,9 +34,9 @@ export class DBDeployApplicationVersionError extends Error {
   }
 }
 
-export class DBHealthinessCheckError extends Error {
-  constructor(msg: string) {
-    super(msg);
+export class DBHealthinessCheckError extends DBError {
+  constructor(msg: string, errors: Error[]) {
+    super(msg, errors);
 
     // Set the prototype explicitly.
     Object.setPrototypeOf(this, DBHealthinessCheckError.prototype);

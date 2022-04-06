@@ -4,7 +4,7 @@ import chalk from 'chalk';
 import log from 'loglevel';
 import { create } from './helpers/create-app-version';
 import { deploy } from './helpers/deploy-app-version-to-env';
-import { DBAsyncError } from './helpers/Errors';
+import { DBError } from './helpers/Errors';
 import { waitForGroupHealthiness } from './helpers/healthiness';
 import { IDeployToGroupProps, IHealthCheckProps } from './helpers/Interfaces';
 
@@ -25,7 +25,7 @@ function verifyPromisesSettled(results: PromiseSettledResult<void>[]) {
       errs.push(result.reason);
     }
   });
-  if (errs.length > 0) throw new DBAsyncError('At least one async process failed as indicated above.', errs);
+  if (errs.length > 0) throw new DBError('At least one async process failed as indicated above.', errs);
 }
 
 /**
@@ -116,7 +116,7 @@ export async function deployToGroup(props: IDeployToGroupProps) {
     });
     await deployAppVersionsToGroup(client, props);
   } catch (e) {
-    if (e instanceof DBAsyncError) {
+    if (e instanceof DBError) {
       e.errors.forEach((err) => log.error(chalk.red(err)));
     } else {
       log.error(chalk.red(e));
