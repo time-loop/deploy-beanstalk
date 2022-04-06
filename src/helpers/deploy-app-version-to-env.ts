@@ -6,7 +6,7 @@ import { IAppVersionProps, IBeanstalkEnvironment } from './Interfaces';
 
 interface IDeployProps {
   client: ElasticBeanstalkClient;
-  dryRun?: boolean;
+  force: boolean;
   env: IBeanstalkEnvironment;
   version: IAppVersionProps;
 }
@@ -16,7 +16,7 @@ interface IDeployProps {
  * beanstalk environment.
  */
 async function deployApplicationVersion(props: IDeployProps): Promise<void> {
-  if (props.dryRun) {
+  if (!props.force) {
     log.info(
       `DRY RUN: Would have deployed app version ${props.version.label} to beanstalk environment ${props.env.name}`,
     );
