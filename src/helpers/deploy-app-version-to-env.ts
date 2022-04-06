@@ -1,7 +1,7 @@
 /* eslint-disable no-console */
 import { ElasticBeanstalkClient, UpdateEnvironmentCommand } from '@aws-sdk/client-elastic-beanstalk';
 import log from 'loglevel';
-import { DBDeployApplicationVersionError } from './Errors';
+import { DBTriggerDeployError } from './Errors';
 import { IAppVersionProps, IBeanstalkEnvironment } from './Interfaces';
 
 interface IDeployProps {
@@ -11,10 +11,6 @@ interface IDeployProps {
   version: IAppVersionProps;
 }
 
-/**
- * Issues a deployment of a beanstalk application version to a single
- * beanstalk environment.
- */
 async function deployApplicationVersion(props: IDeployProps): Promise<void> {
   if (!props.force) {
     log.info(
@@ -46,14 +42,12 @@ async function deployApplicationVersion(props: IDeployProps): Promise<void> {
 }
 
 /**
- * Main entrypoint of the deploy process. Creates a Beanstalk application
- * version if needed, and then issues a deployment if the environment is ready
- * for one. Verifies the deployment completes successfully.
+ * Issues a deployment of an Application Version to a single Beanstalk Environment.
  */
 export async function deploy(props: IDeployProps): Promise<void> {
   try {
     await deployApplicationVersion(props); // Initiate deployment
   } catch (e) {
-    throw new DBDeployApplicationVersionError(props.env.name, props.version.label, e as Error);
+    throw new DBTriggerDeployError(props.env.name, props.version.label, e as Error);
   }
 }

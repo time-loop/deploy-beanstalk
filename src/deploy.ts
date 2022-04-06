@@ -103,7 +103,7 @@ async function deployAppVersionsToGroup(client: ElasticBeanstalkClient, props: I
 /**
  * Iterates over a group of Beanstalk Environments, creates Application
  * Versions for their respective Beanstalk Applications, and then deploys
- * those versions to the Beanstalk Environments all asynchronously.
+ * those versions to the Beanstalk Environments and verifies their health.
  */
 export async function deployToGroup(props: IDeployToGroupProps) {
   const group = props.group;

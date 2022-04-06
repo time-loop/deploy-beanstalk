@@ -55,19 +55,18 @@ function groupEnvsByApp(envs: IBeanstalkEnvironment[]): IEnvironmentsByApp {
 }
 
 /**
- * Counts the total number of healthy instances in the given list of
- * Environments from an AWS response.
+ * Parses subset of DescribeEnvironmentsCommand response to organize
+ * beanstalk environments based on whether they're healthy or not.
  *
  * @param envs The list of environments to check the status of.
  * @param expectedVersionLabel If set, only count environments that match this
- *                             version.
- * @returns The whole number of healthy instances.
+ *                             version as healthy.
+ * @returns The environments organized by status.
  */
 function getEnvironmentsHealth(
   envs: EnvironmentDescription[],
   expectedVersionLabel?: string,
 ): IBeanstalkHealthStatuses {
-  // TODO: below is experimental (minus the return)
   return envs.reduce(
     (previousValue: IBeanstalkHealthStatuses, envDesc) => {
       if (!(envDesc.Status && envDesc.HealthStatus)) {
@@ -106,11 +105,10 @@ function getEnvironmentsHealth(
 }
 
 /**
- * Checks the status of each Beanstalk Environment in the group and returns
- * whether or not they are all healthy.
+ * Checks the status of each Beanstalk Environment in the group.
  *
  * @param props The properties used to check the healthiness of the group.
- * @returns Whether or not the group is entirely healthy.
+ * @returns The statuses of each environment organized by status.
  */
 async function getGroupHealth(props: IHealthCheckPropsPrivate): Promise<IBeanstalkHealthStatuses> {
   const beansToDescribe = groupEnvsByApp(props.group.environments);

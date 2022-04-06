@@ -57,12 +57,12 @@ export interface IAppVersionProps {
 export interface IHealthCheckProps {
   /**
    * Whole number of times to attempt to check the healthiness of the group.
-   * @default AWS_EB_HEALTH_CHECK_ATTEMPTS_DEFAULT
+   * @default 5
    */
   readonly attempts: number;
   /**
    * Number of miliseconds to wait between attempts.
-   * @default AWS_EB_HEALTH_CHECK_TIME_BETWEEN_ATTEMPTS_MS_DEFAULT
+   * @default 60000
    */
   readonly timeBetweenAttemptsMs: number;
 }

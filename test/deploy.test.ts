@@ -13,7 +13,7 @@ import {
   deployToGroup,
   IBeanstalkGroup,
   IDeployToGroupProps,
-  DBDeployApplicationVersionError,
+  DBTriggerDeployError,
 } from '../src/index';
 
 const ebMock = mockClient(ElasticBeanstalkClient);
@@ -167,7 +167,7 @@ describe('Deployment to beanstalks in different apps', () => {
       expect(e).toBeInstanceOf(DBError);
       const errs = (e as DBError).errors;
       expect(errs).toHaveLength(expectedErrCount);
-      expect(errs.filter((err) => err instanceof DBDeployApplicationVersionError)).toHaveLength(1);
+      expect(errs.filter((err) => err instanceof DBTriggerDeployError)).toHaveLength(1);
       const healthCheckErrs = errs.filter((err) => err instanceof DBHealthinessCheckError);
       expect(healthCheckErrs).toHaveLength(1);
       // If multiple envs failed, this length would be higher
