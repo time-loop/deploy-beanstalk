@@ -8,7 +8,7 @@
 
 - **CI Tool Decoupling**
   - The possibility of switching over to any CI tool (GitHub actions, GitLab CI, etc.) is attractive. To prep for that, we need portable scripts that can be run Anywhere™.
-  - CI scripts can be written in any language such that engineers can easily read and improve upon them. 
+  - CI scripts can be written in any language such that engineers can easily read and improve upon them.
   - Consequently, we can easily introduce tests to our CI scripts.
 - **Parallel deployments**
   - We can utilize language functionality (like TypeScript async functions, Golang goroutines, etc.) to allow for parallel deployments to multiple beanstalks at once...in whatever batched fashion we so desire.
