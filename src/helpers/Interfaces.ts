@@ -54,6 +54,19 @@ export interface IAppVersionProps {
   readonly errorIfExists: boolean;
 }
 
+export interface IHealthCheckProps {
+  /**
+   * Whole number of times to attempt to check the healthiness of the group.
+   * @default 5
+   */
+  readonly attempts: number;
+  /**
+   * Number of miliseconds to wait between attempts.
+   * @default 60000
+   */
+  readonly timeBetweenAttemptsMs: number;
+}
+
 /**
  * Everything required to deploy to a group of Beanstalk Environments.
  */
@@ -70,4 +83,12 @@ export interface IDeployToGroupProps {
    * Every level below the specified log level is silenced. Defaults to INFO.
    */
   readonly logLevel?: log.LogLevelDesc;
+  /**
+   * Configuration for health checks prior to the deployment.
+   */
+  readonly preDeployHealthCheckProps?: IHealthCheckProps;
+  /**
+   * Configuration for health checks after the deployment.
+   */
+  readonly postDeployHealthCheckProps?: IHealthCheckProps;
 }
