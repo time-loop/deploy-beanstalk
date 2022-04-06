@@ -22,7 +22,7 @@
 ### Importing
 
 ```typescript
-import { deployToGroup, IBeanstalkGroup } from '@time-loop/deploy-beanstalk';
+import { deployToGroup, IBeanstalkGroup, IDeployToGroupProps } from '@time-loop/deploy-beanstalk';
 ```
 
 ### Grouping
@@ -60,10 +60,23 @@ const group: IBeanstalkGroup = {
 ```typescript
 try {
     ...
-    const dryRyn = false;
-    await deployToGroup(group, !dryRun);
+    const props: IDeployToGroupProps = {
+    group,
+    force: true,
+    // Allows 5 mins to verify health prior to deploy
+    preDeployHealthCheckProps: {
+      attempts: 5,
+      timeBetweenAttemptsMs: 60000,
+    },
+    // Allows 20 mins after deploy to verify health
+    postDeployHealthCheckProps: {
+      attempts: 20,
+      timeBetweenAttemptsMs: 60000,
+    },
+  };
+    await deployToGroup(props);
 } catch (e) {
-    console.error(`Deploy to beanstalk group ${group.name} failed: ${e}`);
+    console.error(e);
     process.exit(1);
 }
 ```

@@ -51,9 +51,8 @@ async function createApplicationVersion(props: ICreateProps): Promise<void> {
 }
 
 /**
- * Main entrypoint of the deploy process. Creates a Beanstalk application
- * version if needed, and then issues a deployment if the environment is ready
- * for one. Verifies the deployment completes successfully.
+ * Creates an Application Version for a specific Beanstalk Application from an
+ * existing artifact in S3.
  */
 export async function create(props: ICreateProps): Promise<void> {
   try {
