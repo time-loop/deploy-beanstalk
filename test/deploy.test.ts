@@ -109,6 +109,16 @@ describe('Deployment to beanstalks in different apps', () => {
     });
   });
 
+  test('with dry run only checks application versions', async () => {
+    expect(await deployToGroup({ ...commonDeployProps, force: false })).not.toThrowError;
+    const noCalls = 0;
+    const expectedDescribeAppVersionCalls = 2; // One per unique Application Version
+    expect(ebMock.commandCalls(CreateApplicationVersionCommand)).toHaveLength(noCalls);
+    expect(ebMock.commandCalls(DescribeApplicationVersionsCommand)).toHaveLength(expectedDescribeAppVersionCalls);
+    expect(ebMock.commandCalls(DescribeEnvironmentsCommand)).toHaveLength(noCalls);
+    expect(ebMock.commandCalls(UpdateEnvironmentCommand)).toHaveLength(noCalls);
+  });
+
   test('succeeds when AWS client does', async () => {
     expect(await deployToGroup(commonDeployProps)).not.toThrowError;
   });

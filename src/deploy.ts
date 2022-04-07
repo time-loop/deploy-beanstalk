@@ -64,20 +64,22 @@ async function deployAppVersionsToGroup(client: ElasticBeanstalkClient, props: I
   log.info(`Asynchronously kicking off deployment to the ${props.group.name} group of beanstalks.`);
   const triggerErr = new DBError('deployAppVersionsToGroup: ', []);
   const force = props.force ?? DEFAULT_FORCE;
-  props.group.environments.forEach(async (env) => {
-    try {
-      await deploy({
-        client,
-        force,
-        env,
-        version: props.group.versionProps,
-      });
-    } catch (e) {
-      triggerErr.errors.push(e as Error);
-      // If an env fails to trigger deploy, note it but continue to check others.
-      log.error(chalk.red(e));
-    }
-  });
+  await Promise.all(
+    props.group.environments.map(async (env) => {
+      try {
+        await deploy({
+          client,
+          force,
+          env,
+          version: props.group.versionProps,
+        });
+      } catch (e) {
+        triggerErr.errors.push(e as Error);
+        // If an env fails to trigger deploy, note it but continue to check others.
+        log.error(chalk.red(e));
+      }
+    }),
+  );
   try {
     // Verify the group successfully receives the deployment.
     await waitForGroupHealthiness({

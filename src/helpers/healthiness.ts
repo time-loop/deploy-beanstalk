@@ -69,6 +69,7 @@ function getEnvironmentsHealth(
 ): IBeanstalkHealthStatuses {
   return envs.reduce(
     (previousValue: IBeanstalkHealthStatuses, envDesc) => {
+      log.debug(envDesc);
       if (!(envDesc.Status && envDesc.HealthStatus)) {
         throw new Error(
           `Beanstalk status for '${envDesc.EnvironmentName}' could not be retrieved. Cannot proceed safely.`,
@@ -95,7 +96,7 @@ function getEnvironmentsHealth(
       } else {
         previousValue.unhealthy.push({
           envDesc,
-          msg: `Beanstalk environment is '${envDesc.Status}' and '${envDesc.HealthStatus}'...`,
+          msg: `Beanstalk environment '${envDesc.EnvironmentName}' is '${envDesc.Status}' and '${envDesc.HealthStatus}'...`,
         });
       }
       return previousValue;
@@ -161,7 +162,7 @@ export async function waitForGroupHealthiness(props: IHealthCheckPropsPrivate): 
       throw new DBHealthinessCheckError(`Could not check group health.`, [err as Error]);
     }
     const isLastAttempt = attempt === props.attempts;
-    const allAreHealthy = statuses.healthy.length === props.group.environments.length;
+    const allAreHealthy = !props.force || statuses.healthy.length === props.group.environments.length;
     if (isLastAttempt && !allAreHealthy) {
       // Log healthy beanstalk statuses
       statuses.healthy.forEach((envStatus) => log.info(envStatus.msg));
