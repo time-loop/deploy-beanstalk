@@ -95,9 +95,10 @@ function getEnvironmentsHealth(
       } else {
         previousValue.unhealthy.push({
           envDesc,
-          msg: `Beanstalk environment is '${envDesc.Status}' and '${envDesc.HealthStatus}'...`,
+          msg: `Beanstalk environment '${envDesc.EnvironmentName}' is '${envDesc.Status}' and '${envDesc.HealthStatus}'...`,
         });
       }
+      log.debug(envDesc);
       return previousValue;
     },
     { healthy: [], unhealthy: [] },
