@@ -21,7 +21,9 @@
 
 ### Installation
 
-To install the package in a project, you'll first need to setup a GitHub PAT since this package is hosted in GitHub Packages. General instructions to do so can be [found here](https://docs.github.com/en/enterprise-server@3.4/authentication/keeping-your-account-and-data-secure/creating-a-personal-access-token).
+To install the package in a project (especially locally), you'll first need to setup a GitHub PAT since this package is hosted in GitHub Packages. General instructions to do so can be [found here](https://docs.github.com/en/enterprise-server@3.4/authentication/keeping-your-account-and-data-secure/creating-a-personal-access-token).
+
+> ***NOTE:*** If you are working with a GitHub Workflow, the provided `GITHUB_TOKEN` might Just Work for you as this is a public package. However, if you also need to access packages that are private to your org, you might consider adding an `ALL_PACKAGE_READ_TOKEN` org secret followed by populating your .npmrc appropriately.
 
 Once created with at least `read:package` access, in your project follow these steps under [Installing a Package](https://itnext.io/setting-up-github-packages-for-npm-2bc9f8e4b11e) where `@yourcompany` is `@time-loop`.
 
