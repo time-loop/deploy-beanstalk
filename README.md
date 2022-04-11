@@ -19,10 +19,28 @@
 
 `tools/ci/deploy/deploy.ts` handles asynchronous+simultaneous deployments to a group of beanstalk environments. It does this by creating an Application Version (one per Beanstalk Application only) from an artifact in S3 followed by issuing deployments of that Application Version to each respective beanstalk environment in the group.
 
+### Installation
+
+To install the package in a project, you'll first need to setup a GitHub PAT since this package is hosted in GitHub Packages. General instructions to do so can be [found here](https://docs.github.com/en/enterprise-server@3.4/authentication/keeping-your-account-and-data-secure/creating-a-personal-access-token).
+
+Once created with at least `read:package` access, in your project follow these steps under [Installing a Package](https://itnext.io/setting-up-github-packages-for-npm-2bc9f8e4b11e) where `@yourcompany` is `@time-loop`.
+
+Then, install with `npm` in your project like so:
+
+```bash
+# --save-dev is optional, depending on whether this is used in the main app or
+# a complementary tool like for CI/CD pipelines.
+npm install [--save-dev] @time-loop/deploy-beanstalk
+```
+
 ### Importing
 
 ```typescript
-import { deployToGroup, IBeanstalkGroup, IDeployToGroupProps } from '@time-loop/deploy-beanstalk';
+import { 
+  deployToGroup, // function to call which deploys to a group
+  IBeanstalkGroup, // Allows us to dictate beanstalk environments to deploy to
+  IDeployToGroupProps // Rest of the configuration needed to deploy
+} from '@time-loop/deploy-beanstalk';
 ```
 
 ### Grouping
