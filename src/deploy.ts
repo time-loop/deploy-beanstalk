@@ -83,12 +83,11 @@ async function deployAppVersionsToGroup(client: ElasticBeanstalkClient, props: I
   try {
     // Verify the group successfully receives the deployment.
     await waitForGroupHealthiness({
-      ...DEFAULT_HEALTH_CHECK_PROPS,
       client,
       group: props.group,
       force,
       checkVersion: true,
-      ...(props.postDeployHealthCheckProps ?? {}),
+      ...(props.postDeployHealthCheckProps ?? DEFAULT_HEALTH_CHECK_PROPS),
     });
     log.info(
       chalk.green('Successfully deployed version ') +
@@ -121,12 +120,11 @@ export async function deployToGroup(props: IDeployToGroupProps) {
     await createAppVersionsForGroup(client, props);
     log.info(chalk.blue('Verifying environments are ready to receive deployment before initiating...'));
     await waitForGroupHealthiness({
-      ...DEFAULT_HEALTH_CHECK_PROPS,
       client,
       group,
       force,
       checkVersion: false,
-      ...(props.preDeployHealthCheckProps ?? {}),
+      ...(props.preDeployHealthCheckProps ?? DEFAULT_HEALTH_CHECK_PROPS),
     });
     await deployAppVersionsToGroup(client, props);
   } catch (e) {
