@@ -1,4 +1,4 @@
-import { S3Location } from '@aws-sdk/client-elastic-beanstalk';
+import { S3Location, EnvironmentHealthStatus } from '@aws-sdk/client-elastic-beanstalk';
 import log from 'loglevel';
 
 /**
@@ -65,6 +65,11 @@ export interface IHealthCheckProps {
    * @default 60000
    */
   readonly timeBetweenAttemptsMs: number;
+  /**
+   * Which statuses qualify a beanstalk environment as unhealthy.
+   * @default ['Severe', 'Degraded', 'Warning']
+   */
+  readonly unhealthyStatuses?: EnvironmentHealthStatus[];
 }
 
 /**
