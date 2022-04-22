@@ -4,12 +4,13 @@ import {
   DescribeEnvironmentsCommandOutput,
   ElasticBeanstalkClient,
   EnvironmentDescription,
+  EnvironmentHealthStatus,
 } from '@aws-sdk/client-elastic-beanstalk';
 import log from 'loglevel';
 import { DBHealthinessCheckError } from './Errors';
 import { IBeanstalkEnvironment, IBeanstalkGroup, IHealthCheckProps } from './Interfaces';
 
-const AWS_EB_HEALTH_CHECK_UNHEALTHY_STATES = ['Severe', 'Degraded', 'Warning'];
+const AWS_EB_HEALTH_CHECK_UNHEALTHY_STATES: EnvironmentHealthStatus[] = ['Severe', 'Degraded', 'Warning'];
 
 interface IEnvironmentsByApp {
   [app: string]: IBeanstalkEnvironment[];
@@ -65,6 +66,7 @@ function groupEnvsByApp(envs: IBeanstalkEnvironment[]): IEnvironmentsByApp {
  */
 function getEnvironmentsHealth(
   envs: EnvironmentDescription[],
+  unhealthyStatuses: EnvironmentHealthStatus[],
   expectedVersionLabel?: string,
 ): IBeanstalkHealthStatuses {
   return envs.reduce(
@@ -75,7 +77,7 @@ function getEnvironmentsHealth(
           `Beanstalk status for '${envDesc.EnvironmentName}' could not be retrieved. Cannot proceed safely.`,
         );
       }
-      const isInHealthyState = !AWS_EB_HEALTH_CHECK_UNHEALTHY_STATES.includes(envDesc.HealthStatus);
+      const isInHealthyState = !unhealthyStatuses.includes(envDesc.HealthStatus as EnvironmentHealthStatus);
       if (envDesc.Status === 'Ready' && isInHealthyState) {
         if (!expectedVersionLabel) {
           previousValue.healthy.push({
@@ -136,6 +138,7 @@ async function getGroupHealth(props: IHealthCheckPropsPrivate): Promise<IBeansta
 
       const partitioned = getEnvironmentsHealth(
         resp.Environments,
+        props.unhealthyStatuses ?? AWS_EB_HEALTH_CHECK_UNHEALTHY_STATES,
         props.checkVersion ? props.group.versionProps.label : undefined,
       );
       statuses.healthy = [...statuses.healthy, ...partitioned.healthy];

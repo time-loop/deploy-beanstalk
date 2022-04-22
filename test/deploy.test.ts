@@ -257,4 +257,59 @@ describe('Deployment to beanstalks in different apps', () => {
     const expectedCalls = 6;
     expect(ebMock.commandCalls(DescribeEnvironmentsCommand)).toHaveLength(expectedCalls);
   });
+
+  test('with custom unhealthyStatuses succeeds to become healthy after one retry attempt', async () => {
+    ebMock
+      .on(DescribeEnvironmentsCommand, {
+        ApplicationName: TEST_BEANSTALK_GROUP.environments[1].app,
+        EnvironmentNames: [TEST_BEANSTALK_GROUP.environments[1].name],
+      })
+      // Initial health check prior to deployment succeeds
+      .resolvesOnce({
+        Environments: [
+          {
+            EnvironmentName: TEST_BEANSTALK_GROUP.environments[1].name,
+            HealthStatus: 'Ok',
+            Status: 'Ready',
+            VersionLabel: 'OLD_VERSION',
+          },
+        ],
+      })
+      // Initial health check after deployment fails
+      .resolvesOnce({
+        Environments: [
+          {
+            EnvironmentName: TEST_BEANSTALK_GROUP.environments[1].name,
+            HealthStatus: 'Degraded',
+            Status: 'Updating',
+            VersionLabel: 'OLD_VERSION',
+          },
+        ],
+      })
+      // Second health check after deployment succeeds
+      .resolves({
+        Environments: [
+          {
+            EnvironmentName: TEST_BEANSTALK_GROUP.environments[1].name,
+            HealthStatus: 'Warning',
+            Status: 'Ready',
+            VersionLabel: TEST_BEANSTALK_GROUP.versionProps.label,
+          },
+        ],
+      });
+
+    expect(
+      await deployToGroup({
+        ...commonDeployProps,
+        postDeployHealthCheckProps: {
+          attempts: 3,
+          timeBetweenAttemptsMs: 0,
+          unhealthyStatuses: ['Severe'],
+        },
+      }),
+    ).not.toThrowError;
+    // 2 pre-deploy checks (one per Application), 4 post-deploy checks (one retry)
+    const expectedCalls = 6;
+    expect(ebMock.commandCalls(DescribeEnvironmentsCommand)).toHaveLength(expectedCalls);
+  });
 });

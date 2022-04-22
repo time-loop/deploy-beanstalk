@@ -118,7 +118,7 @@ export async function deployToGroup(props: IDeployToGroupProps) {
       region: group.region,
     });
     await createAppVersionsForGroup(client, props);
-    // Must wait for envs to be healthy before issuing deployment
+    log.info(chalk.blue('Verifying environments are ready to receive deployment before initiating...'));
     await waitForGroupHealthiness({
       client,
       group,
