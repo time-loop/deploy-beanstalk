@@ -132,7 +132,7 @@ async function getGroupHealth(props: IHealthCheckPropsPrivate): Promise<IBeansta
         throw new Error(`Failed to check status for Environments in App '${key}'`);
       }
 
-      if (resp.Environments.length !== envs.length) {
+      if (resp.Environments.length != envs.length) {
         const missing = envNames.filter((env) => {
           let found = false;
           resp.Environments?.forEach((envDesc) => {
