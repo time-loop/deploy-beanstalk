@@ -6,6 +6,7 @@ import {
   UpdateEnvironmentCommand,
 } from '@aws-sdk/client-elastic-beanstalk';
 import { mockClient } from 'aws-sdk-client-mock';
+import { LogLevelDesc } from 'loglevel';
 import {
   DBError,
   DBCreateApplicationVersionError,
@@ -18,8 +19,18 @@ import {
 
 const ebMock = mockClient(ElasticBeanstalkClient);
 
-const FORCE_DEPLOYMENT = true;
-let TEST_BEANSTALK_GROUP: IBeanstalkGroup;
+const COMMON_DEPLOY_PROPS = {
+  force: true,
+  logLevel: 'SILENT' as LogLevelDesc,
+  preDeployHealthCheckProps: {
+    attempts: 1,
+    timeBetweenAttemptsMs: 0,
+  },
+  postDeployHealthCheckProps: {
+    attempts: 3,
+    timeBetweenAttemptsMs: 0,
+  },
+};
 
 // Must reset client prior to each test
 // https://aws.amazon.com/blogs/developer/mocking-modular-aws-sdk-for-javascript-v3-in-unit-tests/
@@ -27,7 +38,7 @@ beforeEach(() => ebMock.reset());
 
 describe('Deployment to beanstalks in different apps', () => {
   // Define a single beanstalk group with two different environment and applications.
-  TEST_BEANSTALK_GROUP = {
+  const TEST_BEANSTALK_GROUP: IBeanstalkGroup = {
     environments: [
       {
         app: 'ClickupTestAppOne',
@@ -51,18 +62,9 @@ describe('Deployment to beanstalks in different apps', () => {
     region: 'us-west-2',
   };
 
-  const commonDeployProps: IDeployToGroupProps = {
+  const deployProps: IDeployToGroupProps = {
+    ...COMMON_DEPLOY_PROPS,
     group: TEST_BEANSTALK_GROUP,
-    force: FORCE_DEPLOYMENT,
-    logLevel: 'SILENT',
-    preDeployHealthCheckProps: {
-      attempts: 1,
-      timeBetweenAttemptsMs: 0,
-    },
-    postDeployHealthCheckProps: {
-      attempts: 3,
-      timeBetweenAttemptsMs: 0,
-    },
   };
 
   // Defines mock functions for AWS EB Client, mocking successful deployment
@@ -109,18 +111,19 @@ describe('Deployment to beanstalks in different apps', () => {
     });
   });
 
-  test('with dry run only checks application versions', async () => {
-    expect(await deployToGroup({ ...commonDeployProps, force: false })).not.toThrowError;
+  test('with dry run only runs checks', async () => {
+    expect(await deployToGroup({ ...deployProps, force: false })).not.toThrowError;
     const noCalls = 0;
     const expectedDescribeAppVersionCalls = 2; // One per unique Application Version
+    const expectedDescibeEnvironmentsCommandCalls = 4; // Pre and post health check per unique Application
     expect(ebMock.commandCalls(CreateApplicationVersionCommand)).toHaveLength(noCalls);
     expect(ebMock.commandCalls(DescribeApplicationVersionsCommand)).toHaveLength(expectedDescribeAppVersionCalls);
-    expect(ebMock.commandCalls(DescribeEnvironmentsCommand)).toHaveLength(noCalls);
+    expect(ebMock.commandCalls(DescribeEnvironmentsCommand)).toHaveLength(expectedDescibeEnvironmentsCommandCalls);
     expect(ebMock.commandCalls(UpdateEnvironmentCommand)).toHaveLength(noCalls);
   });
 
   test('succeeds when AWS client does', async () => {
-    expect(await deployToGroup(commonDeployProps)).not.toThrowError;
+    expect(await deployToGroup(deployProps)).not.toThrowError;
   });
 
   test('throws errors when versions already exists', async () => {
@@ -131,7 +134,7 @@ describe('Deployment to beanstalks in different apps', () => {
     expect.assertions(3);
     const expectedErrCount = 2;
     try {
-      await deployToGroup(commonDeployProps);
+      await deployToGroup(deployProps);
     } catch (e) {
       expect(e).toBeInstanceOf(DBError);
       const errs = (e as DBError).errors;
@@ -172,7 +175,7 @@ describe('Deployment to beanstalks in different apps', () => {
     expect.assertions(5);
     const expectedErrCount = 2;
     try {
-      await deployToGroup(commonDeployProps);
+      await deployToGroup(deployProps);
     } catch (e) {
       expect(e).toBeInstanceOf(DBError);
       const errs = (e as DBError).errors;
@@ -205,7 +208,7 @@ describe('Deployment to beanstalks in different apps', () => {
     expect.assertions(2);
     const expectedErrs = 1;
     try {
-      await deployToGroup(commonDeployProps);
+      await deployToGroup(deployProps);
     } catch (e) {
       expect(e).toBeInstanceOf(DBHealthinessCheckError);
       expect((e as DBHealthinessCheckError).errors).toHaveLength(expectedErrs);
@@ -252,7 +255,7 @@ describe('Deployment to beanstalks in different apps', () => {
         ],
       });
 
-    expect(await deployToGroup(commonDeployProps)).not.toThrowError;
+    expect(await deployToGroup(deployProps)).not.toThrowError;
     // 2 pre-deploy checks (one per Application), 4 post-deploy checks (one retry)
     const expectedCalls = 6;
     expect(ebMock.commandCalls(DescribeEnvironmentsCommand)).toHaveLength(expectedCalls);
@@ -300,7 +303,7 @@ describe('Deployment to beanstalks in different apps', () => {
 
     expect(
       await deployToGroup({
-        ...commonDeployProps,
+        ...deployProps,
         postDeployHealthCheckProps: {
           attempts: 3,
           timeBetweenAttemptsMs: 0,
@@ -311,5 +314,79 @@ describe('Deployment to beanstalks in different apps', () => {
     // 2 pre-deploy checks (one per Application), 4 post-deploy checks (one retry)
     const expectedCalls = 6;
     expect(ebMock.commandCalls(DescribeEnvironmentsCommand)).toHaveLength(expectedCalls);
+  });
+});
+
+describe('Deployment with a non-existent Beanstalk', () => {
+  // Define a group where a single Environment does not exist
+  const TEST_BEANSTALK_GROUP: IBeanstalkGroup = {
+    environments: ['AnotherTestEnvironment', 'NonExistentEnvironment'].map((env) => {
+      return {
+        app: 'AnotherClickUpTestApp',
+        name: env,
+      };
+    }),
+    versionProps: {
+      artifact: {
+        S3Bucket: 'test-bucket-clickup',
+        S3Key: 'testDir/clickupTestArtifact.zip',
+      },
+      label: 'TestLabel',
+      description: 'Test desc',
+      errorIfExists: true,
+    },
+    name: 'AnotherTestBeanstalkGroup',
+    region: 'us-west-2',
+  };
+
+  const deployProps: IDeployToGroupProps = {
+    ...COMMON_DEPLOY_PROPS,
+    group: TEST_BEANSTALK_GROUP,
+  };
+
+  // Defines mock functions for AWS EB Client
+  beforeEach(() => {
+    ebMock.on(CreateApplicationVersionCommand).resolves({
+      $metadata: {
+        httpStatusCode: 200,
+      },
+    });
+    ebMock.on(DescribeApplicationVersionsCommand).resolves({
+      ApplicationVersions: [],
+    });
+    ebMock
+      .on(DescribeEnvironmentsCommand, {
+        ApplicationName: TEST_BEANSTALK_GROUP.environments[0].app,
+        EnvironmentNames: TEST_BEANSTALK_GROUP.environments.map((env) => env.name),
+      })
+      .resolves({
+        // Only returns Environment that exists
+        Environments: [
+          {
+            EnvironmentName: TEST_BEANSTALK_GROUP.environments[0].name,
+            HealthStatus: 'Ok',
+            Status: 'Ready',
+            VersionLabel: 'OLD_VERSION',
+          },
+        ],
+      });
+  });
+
+  test('with dry-run still throws an error', async () => {
+    try {
+      await deployToGroup({ ...deployProps, force: false });
+    } catch (e) {
+      expect(e).toBeInstanceOf(DBHealthinessCheckError);
+      expect((e as DBHealthinessCheckError).errors).toHaveLength(1);
+    }
+  });
+
+  test('throws an error', async () => {
+    try {
+      await deployToGroup(deployProps);
+    } catch (e) {
+      expect(e).toBeInstanceOf(DBHealthinessCheckError);
+      expect((e as DBHealthinessCheckError).errors).toHaveLength(1);
+    }
   });
 });

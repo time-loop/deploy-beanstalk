@@ -128,10 +128,9 @@ export async function deployToGroup(props: IDeployToGroupProps) {
     });
     await deployAppVersionsToGroup(client, props);
   } catch (e) {
+    log.error(chalk.red(e));
     if (e instanceof DBError) {
       e.errors.forEach((err) => log.error(chalk.red(err)));
-    } else {
-      log.error(chalk.red(e));
     }
     log.error(chalk.red('Deploy to beanstalk group ') + chalk.blue(group.name) + chalk.red(' failed.'));
     throw e;

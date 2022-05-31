@@ -120,20 +120,36 @@ async function getGroupHealth(props: IHealthCheckPropsPrivate): Promise<IBeansta
   // For each Application Version
   for (const key in beansToDescribe) {
     if (beansToDescribe.hasOwnProperty(key)) {
-      if (!props.force) {
-        log.info(`DRY RUN: Would have waited for beanstalks in app '${key}' to become healthy.`);
-        continue;
-      }
-
       const envs = beansToDescribe[key];
+      const envNames = envs.map((env) => env.name);
       resp = await props.client.send(
         new DescribeEnvironmentsCommand({
           ApplicationName: key,
-          EnvironmentNames: envs.map((env) => env.name),
+          EnvironmentNames: envNames,
         }),
       );
       if (!resp.Environments) {
         throw new Error(`Failed to check status for Environments in App '${key}'`);
+      }
+
+      if (resp.Environments.length != envs.length) {
+        const missing = envNames.filter((env) => {
+          let found = false;
+          resp.Environments?.forEach((envDesc) => {
+            if (env === envDesc.EnvironmentName) {
+              found = true;
+            }
+          });
+          return !found;
+        });
+        throw new Error(
+          `The following Beanstalk Environments either do not exist or were not found: ${JSON.stringify(missing)}`,
+        );
+      }
+
+      if (!props.force) {
+        log.info(`DRY RUN: Would have waited for beanstalks in app '${key}' to become healthy.`);
+        continue;
       }
 
       const partitioned = getEnvironmentsHealth(
