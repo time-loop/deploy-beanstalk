@@ -1,6 +1,7 @@
 /**
  * Houses multiple errors. Since we handle a group of multiple beanstalk
- * environments, we want to track errors for each one individually.
+ * environments, we want to track errors for each one (and each type)
+ * individually.
  */
 export class DBError extends Error {
   private readonly _errors: Error[];
@@ -17,6 +18,11 @@ export class DBError extends Error {
     return this._errors;
   }
 }
+
+/**
+ * Represents a single Application Version creation error, i.e., should be
+ * thrown when a single Application Version could not be created.
+ */
 export class DBCreateApplicationVersionError extends Error {
   constructor(appName: string, versionLabel: string, error: Error) {
     const msg = `Beanstalk app version ${versionLabel} failed creation for app ${appName}. ${error}`;
@@ -27,13 +33,30 @@ export class DBCreateApplicationVersionError extends Error {
   }
 }
 
+/**
+ * Represents a single triggered deployment failure, i.e., should be thrown
+ * when one Beanstalk Environment fails to have a deployment triggered.
+ */
 export class DBTriggerDeployError extends Error {
   constructor(envName: string, versionLabel: string, error: Error) {
-    const msg = `Deployment of app version ${versionLabel} failed on environment ${envName}. ${error}`;
+    const msg = `Deployment of app version '${versionLabel}' failed on environment '${envName}'. ${error}`;
     super(msg);
 
     // Set the prototype explicitly.
     Object.setPrototypeOf(this, DBTriggerDeployError.prototype);
+  }
+}
+
+/**
+ * Multiple beanstalk environments could fail to have their deploy triggered.
+ * Hence the extension of DBError.
+ */
+export class DBGroupDeployTriggerError extends DBError {
+  constructor(msg: string, errors: Error[]) {
+    super(msg, errors);
+
+    // Set the prototype explicitly.
+    Object.setPrototypeOf(this, DBGroupDeployTriggerError.prototype);
   }
 }
 
