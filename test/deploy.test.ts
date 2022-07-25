@@ -22,7 +22,7 @@ const ebMock = mockClient(ElasticBeanstalkClient);
 
 const COMMON_DEPLOY_PROPS = {
   force: true,
-  logLevel: 'INFO' as LogLevelDesc,
+  logLevel: 'SILENT' as LogLevelDesc,
   preDeployHealthCheckProps: {
     attempts: 1,
     timeBetweenAttemptsMs: 0,
