@@ -33,11 +33,7 @@ async function deployApplicationVersion(props: IDeployProps): Promise<void> {
   if (statusCode && statusCode >= 200 && statusCode < 300) {
     log.info(`Deployment of app version '${props.version.label}' triggered for '${props.env.name}'.`);
   } else {
-    throw new Error(
-      `Triggered deployment of app version '${props.version.label}' failed for '${
-        props.env.name
-      }'. Response metadata: ${JSON.stringify(resp.$metadata, undefined, 2)}`,
-    );
+    throw new Error(`Response metadata: ${JSON.stringify(resp.$metadata, undefined, 2)}`);
   }
 }
 

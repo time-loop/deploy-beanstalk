@@ -15,13 +15,14 @@ import {
   IBeanstalkGroup,
   IDeployToGroupProps,
   DBTriggerDeployError,
+  DBGroupDeployTriggerError,
 } from '../src/index';
 
 const ebMock = mockClient(ElasticBeanstalkClient);
 
 const COMMON_DEPLOY_PROPS = {
   force: true,
-  logLevel: 'SILENT' as LogLevelDesc,
+  logLevel: 'INFO' as LogLevelDesc,
   preDeployHealthCheckProps: {
     attempts: 1,
     timeBetweenAttemptsMs: 0,
@@ -172,7 +173,7 @@ describe('Deployment to beanstalks in different apps', () => {
         ],
       });
 
-    expect.assertions(5);
+    expect.hasAssertions();
     const expectedErrCount = 2;
     try {
       await deployToGroup(deployProps);
@@ -180,7 +181,11 @@ describe('Deployment to beanstalks in different apps', () => {
       expect(e).toBeInstanceOf(DBError);
       const errs = (e as DBError).errors;
       expect(errs).toHaveLength(expectedErrCount);
-      expect(errs.filter((err) => err instanceof DBTriggerDeployError)).toHaveLength(1);
+      const triggerFailureErrs = errs.filter(
+        (err) => err instanceof DBGroupDeployTriggerError,
+      ) as DBGroupDeployTriggerError[];
+      expect(triggerFailureErrs).toHaveLength(1);
+      expect(triggerFailureErrs[0].errors.filter((err) => err instanceof DBTriggerDeployError)).toHaveLength(1);
       const healthCheckErrs = errs.filter((err) => err instanceof DBHealthinessCheckError);
       expect(healthCheckErrs).toHaveLength(1);
       // If multiple envs failed, this length would be higher
@@ -205,13 +210,17 @@ describe('Deployment to beanstalks in different apps', () => {
         ],
       });
 
-    expect.assertions(2);
+    expect.hasAssertions();
     const expectedErrs = 1;
     try {
       await deployToGroup(deployProps);
     } catch (e) {
-      expect(e).toBeInstanceOf(DBHealthinessCheckError);
-      expect((e as DBHealthinessCheckError).errors).toHaveLength(expectedErrs);
+      expect(e).toBeInstanceOf(DBError);
+      const healthinessErrs = (e as DBError).errors.filter(
+        (err) => err instanceof DBHealthinessCheckError,
+      ) as DBHealthinessCheckError[];
+      expect(healthinessErrs).toHaveLength(expectedErrs);
+      expect(healthinessErrs[0].errors).toHaveLength(expectedErrs);
     }
   });
 
