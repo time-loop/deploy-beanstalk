@@ -97,6 +97,14 @@ export interface IDeployToGroupProps {
    * Configuration for health checks after the deployment.
    */
   readonly postDeployHealthCheckProps?: IHealthCheckProps;
+  /**
+   * AWS Access Key Id, if not present taken from i.e. ENV variable
+   */
+  readonly accessKeyId?: string;
+  /**
+   * AWS Secret Access Key, if not present taken from i.e. ENV variable
+   */
+  readonly secretAccessKey?: string;
 }
 
 export interface Logger {

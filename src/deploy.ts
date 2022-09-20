@@ -130,15 +130,29 @@ async function deployAppVersionsToGroup(client: ElasticBeanstalkClient, props: I
 }
 
 /**
+ * Get AWS Credentials if provided
+ */
+function getCredentials(props: IDeployToGroupProps) {
+  if (props.accessKeyId && props.secretAccessKey) {
+    return {
+      accessKeyId: props.accessKeyId,
+      secretAccessKey: props.secretAccessKey,
+    };
+  }
+  return;
+}
+/**
  * Initializes the Beanstalk Client, creates the needed Application Versions,
  * and verifies the Beanstalk Environments in the group are ready to receive
  * the deployment.
  */
 async function preDeploySteps(props: IDeployToGroupProps, log: Logger): Promise<ElasticBeanstalkClient> {
   try {
+    const credentials = getCredentials(props);
     const client = new ElasticBeanstalkClient({
       maxAttempts: AWS_CLIENT_REQUEST_MAX_ATTEMPTS_DEFAULT,
       region: props.group.region,
+      credentials,
     });
     await createAppVersionsForGroup(client, props, log);
     await preDeployHealthcheck(client, props, log);
