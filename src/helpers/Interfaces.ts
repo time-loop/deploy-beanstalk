@@ -1,6 +1,6 @@
 import { S3Location, EnvironmentHealthStatus } from '@aws-sdk/client-elastic-beanstalk';
 
-export type LogLevel = 'trace' | 'debug' | 'info' | 'warn' | 'error' | 'silent';
+export type LogLevel = 'debug' | 'info' | 'warn' | 'error' | 'silent';
 
 /**
  * Properties consumed to deploy an Application Version to an existing
@@ -108,9 +108,9 @@ export interface IDeployToGroupProps {
 }
 
 export interface Logger {
-  debug: (msg: string | Error) => void;
-  info: (msg: string | Error) => void;
-  warn: (msg: string | Error) => void;
-  error: (msg: string | Error) => void;
+  debug: (msg: string) => void;
+  info: (msg: string) => void;
+  warn: (msg: string) => void;
+  error: (msg: string) => void;
   setLevel: (level: LogLevel) => void;
 }
