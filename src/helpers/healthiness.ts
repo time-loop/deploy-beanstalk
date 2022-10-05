@@ -1,4 +1,3 @@
-/* eslint-disable no-console */
 import {
   DescribeEnvironmentsCommand,
   DescribeEnvironmentsCommandOutput,
@@ -6,9 +5,8 @@ import {
   EnvironmentDescription,
   EnvironmentHealthStatus,
 } from '@aws-sdk/client-elastic-beanstalk';
-import log from 'loglevel';
 import { DBHealthinessCheckError } from './Errors';
-import { IBeanstalkEnvironment, IBeanstalkGroup, IHealthCheckProps } from './Interfaces';
+import { IBeanstalkEnvironment, IBeanstalkGroup, IHealthCheckProps, Logger } from './Interfaces';
 
 const AWS_EB_HEALTH_CHECK_UNHEALTHY_STATES: EnvironmentHealthStatus[] = ['Severe', 'Degraded', 'Warning'];
 
@@ -24,6 +22,7 @@ interface IHealthCheckPropsPrivate extends IHealthCheckProps {
   client: ElasticBeanstalkClient;
   force: boolean;
   group: IBeanstalkGroup;
+  log: Logger;
 }
 
 interface IBeanstalkHealthStatuses {
@@ -67,11 +66,12 @@ function groupEnvsByApp(envs: IBeanstalkEnvironment[]): IEnvironmentsByApp {
 function getEnvironmentsHealth(
   envs: EnvironmentDescription[],
   unhealthyStatuses: EnvironmentHealthStatus[],
+  log: Logger,
   expectedVersionLabel?: string,
 ): IBeanstalkHealthStatuses {
   return envs.reduce(
     (previousValue: IBeanstalkHealthStatuses, envDesc) => {
-      log.debug(envDesc);
+      log.debug(JSON.stringify(envDesc, null, 4));
       if (!(envDesc.Status && envDesc.HealthStatus)) {
         throw new Error(
           `Beanstalk status for '${envDesc.EnvironmentName}' could not be retrieved. Cannot proceed safely.`,
@@ -148,13 +148,14 @@ async function getGroupHealth(props: IHealthCheckPropsPrivate): Promise<IBeansta
       }
 
       if (!props.force) {
-        log.info(`DRY RUN: Would have waited for beanstalks in app '${key}' to become healthy.`);
+        props.log.info(`DRY RUN: Would have waited for beanstalks in app '${key}' to become healthy.`);
         continue;
       }
 
       const partitioned = getEnvironmentsHealth(
         resp.Environments,
         props.unhealthyStatuses ?? AWS_EB_HEALTH_CHECK_UNHEALTHY_STATES,
+        props.log,
         props.checkVersion ? props.group.versionProps.label : undefined,
       );
       statuses.healthy = [...statuses.healthy, ...partitioned.healthy];
@@ -173,7 +174,7 @@ async function getGroupHealth(props: IHealthCheckPropsPrivate): Promise<IBeansta
  */
 export async function waitForGroupHealthiness(props: IHealthCheckPropsPrivate): Promise<void> {
   for (let attempt = 1; attempt <= props.attempts; attempt++) {
-    log.info(`Checking beanstalks health... Attempt ${attempt} of ${props.attempts}`);
+    props.log.info(`Checking beanstalks health... Attempt ${attempt} of ${props.attempts}`);
     let statuses: IBeanstalkHealthStatuses;
     try {
       statuses = await getGroupHealth(props);
@@ -184,17 +185,17 @@ export async function waitForGroupHealthiness(props: IHealthCheckPropsPrivate): 
     const allAreHealthy = !props.force || statuses.healthy.length === props.group.environments.length;
     if (isLastAttempt && !allAreHealthy) {
       // Log healthy beanstalk statuses
-      statuses.healthy.forEach((envStatus) => log.info(envStatus.msg));
+      statuses.healthy.forEach((envStatus) => props.log.info(envStatus.msg));
       const errs = statuses.unhealthy.map((envStatus) => new Error(envStatus.msg));
       throw new DBHealthinessCheckError(`Beanstalks are not healthy after ${props.attempts} attempt(s).`, errs);
     }
 
     // If we're not on the last attempt, log all statuses
     [statuses.healthy, statuses.unhealthy].forEach((statusSet) => {
-      statusSet.forEach((envStatus) => log.info(envStatus.msg));
+      statusSet.forEach((envStatus) => props.log.info(envStatus.msg));
     });
     if (allAreHealthy) {
-      log.info(`All beanstalks in group '${props.group.name}' are healthy!`);
+      props.log.info(`All beanstalks in group '${props.group.name}' are healthy!`);
       return;
     }
 

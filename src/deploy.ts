@@ -1,12 +1,11 @@
-/* eslint-disable no-console */
 import { ElasticBeanstalkClient } from '@aws-sdk/client-elastic-beanstalk';
 import chalk from 'chalk';
-import log from 'loglevel';
+import loglevel from 'loglevel';
 import { create } from './helpers/create-app-version';
 import { deploy } from './helpers/deploy-app-version-to-env';
 import { DBError, DBGroupDeployTriggerError, DBHealthinessCheckError } from './helpers/Errors';
 import { waitForGroupHealthiness } from './helpers/healthiness';
-import { IDeployToGroupProps, IHealthCheckProps } from './helpers/Interfaces';
+import { IDeployToGroupProps, IHealthCheckProps, Logger } from './helpers/Interfaces';
 
 const AWS_CLIENT_REQUEST_MAX_ATTEMPTS_DEFAULT = 10;
 const DEFAULT_FORCE = false;
@@ -34,7 +33,7 @@ function verifyPromisesSettled(results: PromiseSettledResult<void>[]) {
  * Application. For each of those unique Applications, we must create an App
  * Version to use for deployments.
  */
-async function createAppVersionsForGroup(client: ElasticBeanstalkClient, props: IDeployToGroupProps) {
+async function createAppVersionsForGroup(client: ElasticBeanstalkClient, props: IDeployToGroupProps, log: Logger) {
   const appsWithCreatedVersions: string[] = [];
   const appVersionPromises: Promise<void>[] = [];
   log.info(`Creating application versions for beanstalk group ${props.group.name}`);
@@ -46,6 +45,7 @@ async function createAppVersionsForGroup(client: ElasticBeanstalkClient, props: 
           version: props.group.versionProps,
           appName: env.app,
           dryRun: !props.force,
+          log,
         }),
       );
       appsWithCreatedVersions.push(env.app);
@@ -56,7 +56,7 @@ async function createAppVersionsForGroup(client: ElasticBeanstalkClient, props: 
   log.info(chalk.green('All needed application versions exist.'));
 }
 
-async function preDeployHealthcheck(client: ElasticBeanstalkClient, props: IDeployToGroupProps) {
+async function preDeployHealthcheck(client: ElasticBeanstalkClient, props: IDeployToGroupProps, log: Logger) {
   try {
     log.info(chalk.blue('Verifying environments are ready to receive deployment before initiating...'));
     await waitForGroupHealthiness({
@@ -64,6 +64,7 @@ async function preDeployHealthcheck(client: ElasticBeanstalkClient, props: IDepl
       group: props.group,
       force: props.force ?? DEFAULT_FORCE,
       checkVersion: false,
+      log,
       ...(props.preDeployHealthCheckProps ?? DEFAULT_HEALTH_CHECK_PROPS),
     });
   } catch (e) {
@@ -74,7 +75,7 @@ async function preDeployHealthcheck(client: ElasticBeanstalkClient, props: IDepl
   }
 }
 
-async function postDeployHealthcheck(client: ElasticBeanstalkClient, props: IDeployToGroupProps) {
+async function postDeployHealthcheck(client: ElasticBeanstalkClient, props: IDeployToGroupProps, log: Logger) {
   log.info(chalk.blue('Verifying environments successfully receive the deployment...this could take a while.'));
   try {
     await waitForGroupHealthiness({
@@ -82,6 +83,7 @@ async function postDeployHealthcheck(client: ElasticBeanstalkClient, props: IDep
       group: props.group,
       force: props.force ?? DEFAULT_FORCE,
       checkVersion: true,
+      log,
       ...(props.postDeployHealthCheckProps ?? DEFAULT_HEALTH_CHECK_PROPS),
     });
   } catch (e) {
@@ -103,7 +105,7 @@ async function postDeployHealthcheck(client: ElasticBeanstalkClient, props: IDep
  * For each Beanstalk Environment in the group, deploys the respective
  * Application Version.
  */
-async function deployAppVersionsToGroup(client: ElasticBeanstalkClient, props: IDeployToGroupProps) {
+async function deployAppVersionsToGroup(client: ElasticBeanstalkClient, props: IDeployToGroupProps, log: Logger) {
   log.info(`Asynchronously kicking off deployment to the ${props.group.name} group of beanstalks.`);
   const triggerErr = new DBGroupDeployTriggerError('deployAppVersionsToGroup: ', []);
   const force = props.force ?? DEFAULT_FORCE;
@@ -114,6 +116,7 @@ async function deployAppVersionsToGroup(client: ElasticBeanstalkClient, props: I
           client,
           force,
           env,
+          log,
           version: props.group.versionProps,
         });
       } catch (e) {
@@ -127,18 +130,32 @@ async function deployAppVersionsToGroup(client: ElasticBeanstalkClient, props: I
 }
 
 /**
+ * Get AWS Credentials if provided
+ */
+function getCredentials(props: IDeployToGroupProps) {
+  if (props.accessKeyId && props.secretAccessKey) {
+    return {
+      accessKeyId: props.accessKeyId,
+      secretAccessKey: props.secretAccessKey,
+    };
+  }
+  return;
+}
+/**
  * Initializes the Beanstalk Client, creates the needed Application Versions,
  * and verifies the Beanstalk Environments in the group are ready to receive
  * the deployment.
  */
-async function preDeploySteps(props: IDeployToGroupProps): Promise<ElasticBeanstalkClient> {
+async function preDeploySteps(props: IDeployToGroupProps, log: Logger): Promise<ElasticBeanstalkClient> {
   try {
+    const credentials = getCredentials(props);
     const client = new ElasticBeanstalkClient({
       maxAttempts: AWS_CLIENT_REQUEST_MAX_ATTEMPTS_DEFAULT,
       region: props.group.region,
+      credentials,
     });
-    await createAppVersionsForGroup(client, props);
-    await preDeployHealthcheck(client, props);
+    await createAppVersionsForGroup(client, props, log);
+    await preDeployHealthcheck(client, props, log);
     return client;
   } catch (e) {
     log.error(chalk.red(e));
@@ -155,17 +172,17 @@ async function preDeploySteps(props: IDeployToGroupProps): Promise<ElasticBeanst
  * Beanstalk Environment in the group, then verifies they reach a healthy state
  * and successfully land the expected version.
  */
-async function deploySteps(client: ElasticBeanstalkClient, props: IDeployToGroupProps) {
+async function deploySteps(client: ElasticBeanstalkClient, props: IDeployToGroupProps, log: Logger) {
   let deployErrs: DBError = new DBError('deploySteps(): ', []);
   try {
-    await deployAppVersionsToGroup(client, props);
+    await deployAppVersionsToGroup(client, props, log);
   } catch (e) {
     // We still want to see status of Beanstalks who did have deploy triggered
     deployErrs.errors.push(e as Error);
   }
 
   try {
-    await postDeployHealthcheck(client, props);
+    await postDeployHealthcheck(client, props, log);
   } catch (e) {
     log.error(chalk.red(e));
     if (e instanceof DBError) {
@@ -183,10 +200,10 @@ async function deploySteps(client: ElasticBeanstalkClient, props: IDeployToGroup
  * Versions for their respective Beanstalk Applications, and then deploys
  * those versions to the Beanstalk Environments and verifies their health.
  */
-export async function deployToGroup(props: IDeployToGroupProps) {
+export async function deployToGroup(props: IDeployToGroupProps, log: Logger = loglevel) {
   const group = props.group;
-  log.setLevel(props.logLevel ?? log.levels.INFO);
+  log.setLevel(props.logLevel ?? 'info');
   log.info(chalk.green('Beginning deploy process for beanstalk group ') + chalk.blue(group.name));
 
-  await deploySteps(await preDeploySteps(props), props);
+  await deploySteps(await preDeploySteps(props, log), props, log);
 }

@@ -1,5 +1,6 @@
 import { S3Location, EnvironmentHealthStatus } from '@aws-sdk/client-elastic-beanstalk';
-import log from 'loglevel';
+
+export type LogLevel = 'debug' | 'info' | 'warn' | 'error' | 'silent';
 
 /**
  * Properties consumed to deploy an Application Version to an existing
@@ -87,7 +88,7 @@ export interface IDeployToGroupProps {
   /**
    * Every level below the specified log level is silenced. Defaults to INFO.
    */
-  readonly logLevel?: log.LogLevelDesc;
+  readonly logLevel?: LogLevel;
   /**
    * Configuration for health checks prior to the deployment.
    */
@@ -96,4 +97,20 @@ export interface IDeployToGroupProps {
    * Configuration for health checks after the deployment.
    */
   readonly postDeployHealthCheckProps?: IHealthCheckProps;
+  /**
+   * AWS Access Key Id, if not present taken from i.e. ENV variable
+   */
+  readonly accessKeyId?: string;
+  /**
+   * AWS Secret Access Key, if not present taken from i.e. ENV variable
+   */
+  readonly secretAccessKey?: string;
+}
+
+export interface Logger {
+  debug: (msg: string) => void;
+  info: (msg: string) => void;
+  warn: (msg: string) => void;
+  error: (msg: string) => void;
+  setLevel: (level: LogLevel) => void;
 }

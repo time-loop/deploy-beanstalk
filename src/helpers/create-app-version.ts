@@ -1,18 +1,17 @@
-/* eslint-disable no-console */
 import {
   CreateApplicationVersionCommand,
   DescribeApplicationVersionsCommand,
   ElasticBeanstalkClient,
 } from '@aws-sdk/client-elastic-beanstalk';
-import log from 'loglevel';
 import { DBCreateApplicationVersionError } from './Errors';
-import { IAppVersionProps } from './Interfaces';
+import { IAppVersionProps, Logger } from './Interfaces';
 
 interface ICreateProps {
   appName: string;
   client: ElasticBeanstalkClient;
   dryRun?: boolean;
   version: IAppVersionProps;
+  log: Logger;
 }
 
 async function checkApplicationVersionExists(props: ICreateProps): Promise<boolean> {
@@ -24,7 +23,7 @@ async function checkApplicationVersionExists(props: ICreateProps): Promise<boole
   return getExistingVersionsResp.ApplicationVersions ? getExistingVersionsResp.ApplicationVersions.length > 0 : false;
 }
 
-async function createApplicationVersion(props: ICreateProps): Promise<void> {
+async function createApplicationVersion(props: ICreateProps, log: Logger): Promise<void> {
   if (props.dryRun) {
     log.info(`DRY RUN: Would have created application version ${props.version.label} for app ${props.appName}`);
     return;
@@ -61,11 +60,11 @@ export async function create(props: ICreateProps): Promise<void> {
       if (props.version.errorIfExists ?? false) {
         throw new Error(`Failed to create new application version ${props.version.label}, it already exists.`);
       }
-      log.info(
+      props.log.info(
         `Not creating new application version ${props.version.label} for app ${props.appName} since it already exists.`,
       );
     } else {
-      await createApplicationVersion(props);
+      await createApplicationVersion(props, props.log);
     }
   } catch (e) {
     throw new DBCreateApplicationVersionError(props.appName, props.version.label, e as Error);

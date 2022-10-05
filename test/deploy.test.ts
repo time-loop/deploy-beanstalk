@@ -6,7 +6,6 @@ import {
   UpdateEnvironmentCommand,
 } from '@aws-sdk/client-elastic-beanstalk';
 import { mockClient } from 'aws-sdk-client-mock';
-import { LogLevelDesc } from 'loglevel';
 import {
   DBError,
   DBCreateApplicationVersionError,
@@ -16,13 +15,14 @@ import {
   IDeployToGroupProps,
   DBTriggerDeployError,
   DBGroupDeployTriggerError,
+  LogLevel,
 } from '../src/index';
 
 const ebMock = mockClient(ElasticBeanstalkClient);
 
 const COMMON_DEPLOY_PROPS = {
   force: true,
-  logLevel: 'SILENT' as LogLevelDesc,
+  logLevel: 'silent' as LogLevel,
   preDeployHealthCheckProps: {
     attempts: 1,
     timeBetweenAttemptsMs: 0,
